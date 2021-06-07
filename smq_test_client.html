@@ -1,0 +1,35 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"
+        integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+
+<h1>Simple Message Queue Test Client</h1>
+<hr>
+<h2>Start and Stop Client<h2>
+<table>
+  <tr><td>SMQ Server                     </td><td><input id="text_smqserver" type="text" value="localhost:7000"/></td></tr>
+  <tr><td>Name                           </td><td><input id="text_name"      type="text" /></td></tr>
+  <tr><td>Pub_List (whitespace delimited)</td><td><input id="text_publist"   type="text" /></td></tr>
+  <tr><td>Sub_List (whitespace delimited)</td><td><input id="text_sublist"   type="text" /></td></tr>
+  <tr><td>Hostname                       </td><td id=td_hostname></td></tr>
+  <tr><td>PID                            </td><td id=td_pid     ></td></tr>
+  <tr><td>Response                       </td><td id=td_start_stop_response></td></tr>
+</table>
+<br>
+<button onclick="call_py('button_start_clicked')">Start</button>
+<button onclick="call_py('button_stop_clicked')" >Stop</button>
+
+<hr>
+<h2>Publish Message</h2>
+<table>
+  <tr><td>Message </td><td><input id="text_message" type="text" /></td></tr>
+  <tr><td>Data    </td><td><input id="text_data"    type="text" /></td></tr>
+  <tr><td>Response</td><td id=td_response></td></tr>
+</table>
+<br>
+<button onclick="call_py('button_publish_clicked')">Publish</button>
+
+<hr>
+<h2>Received Messages</h2>
+<pre id=received_message style='border: solid 1px black;'>
+
+</pre>
+<button onclick="call_py('button_check_new_messages_clicked')">Check_New_Messages</button>
