@@ -132,21 +132,20 @@ class SMQClient():
         self._client_info = None
         self._executor = ThreadPoolExecutor(max_workers=4)
         self._local_rpc_server = None
+        self._local_rpc_server_thread = None
         self._message_handler = None
         self._message_queue = deque()
         self._smq_server = None
-        self._started = False
-        self._thread = None
 
-    def start_client(self, smq_server, client_name, pub_list_str, sub_list_str):
+    def start_client(self, smq_server, client_name, pub_list_str, sub_list_str, message_handler=None):
         # sanity check
-        if self._started:
+        if self._local_rpc_server:
             raise Exception('Client already started')
 
         logging.info('Starting Client...')
 
         # set start flag
-        self._started = True
+        self._message_handler = message_handler
 
         # init the rpc to the main smq server
         self._smq_server = xmlrpc.client.ServerProxy('http://' + smq_server, allow_none=True)
@@ -154,8 +153,8 @@ class SMQClient():
         # start XML RPC server on new thread
         self._local_rpc_server = SimpleXMLRPCServerEx(('', 0), allow_none=True, logRequests=False)
         self._local_rpc_server.register_function(self.receive_message)
-        self._thread = threading.Thread(target=lambda: self._local_rpc_server.serve_forever(), daemon=True)
-        self._thread.start()
+        self._local_rpc_server_thread = threading.Thread(target=lambda: self._local_rpc_server.serve_forever(), daemon=True)
+        self._local_rpc_server_thread.start()
 
         # register this client with the main smq server
         client_rpc_url = socket.gethostname() + ':' + str(self._local_rpc_server.server_address[1])
@@ -184,15 +183,11 @@ class SMQClient():
         kwargs = {'smq_uid': sender_smq_uid, 'msg': msg, 'msg_data': msg_data}
         self._message_queue.append(kwargs)
         if self._message_handler:
-            print('**** handler')
             self._executor.submit(self._message_handler, **kwargs)
 
     def get_message(self):
         if self._message_queue:
             return self._message_queue.popleft()
-
-    def set_message_handler(self, message_handler):
-        self._message_handler = message_handler
 
     def shutdown(self):
         """ shutdown the SMQ client """
@@ -202,8 +197,8 @@ class SMQClient():
             raise Exception('Client not started')
         self._smq_server.unregister_client(self._client_info)
         self._local_rpc_server.shutdown()
-        self._thread.join()
-        self._thread = None
+        self._local_rpc_server_thread.join()
+        self._local_rpc_server_thread = None
         self._client_info = None
         self._local_rpc_server = None
         self._smq_server = None
@@ -222,7 +217,7 @@ def _init_logging():
     console_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(threadName)s %(message)s'))
     root.addHandler(console_handler)
 
-    file_handler = logging.FileHandler(filename='flow_controller.log')
+    file_handler = logging.FileHandler(filename='simple_message_queue.log')
     file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(threadName)s %(message)s'))
     root.addHandler(file_handler)
 
