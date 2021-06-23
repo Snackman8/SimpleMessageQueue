@@ -1,5 +1,11 @@
 [Unit]
 Description=Simple Message Queue Service
 
+[Install]
+WantedBy=multi-user.target
+
 [Service]
-ExecStart=/usr/bin/python3 /usr/local/lib/python3.8/dist-packages/SimpleMessageQueue.py
+Type=simple
+User=SimpleMessageQueue
+Restart=on-failure
+ExecStart=/usr/bin/python3 /usr/local/lib/python3.8/dist-packages/SimpleMessageQueue/SimpleMessageQueue.py
