@@ -1,15 +1,24 @@
+# --------------------------------------------------
+#    Imports
+# --------------------------------------------------
 import logging
 import os
 import socket
 import threading
 import time
 from pylinkjs.PyLinkJS import run_pylinkjs_app, get_broadcast_jsclients
-#from smq_client import SMQClient
-from smq import SMQServer, SMQClient
+from SimpleMessageQueue import SMQServer, SMQClient
 
+
+# --------------------------------------------------
+#    Globals
+# --------------------------------------------------
 SMQC = {}
 
 
+# --------------------------------------------------
+#    Functions
+# --------------------------------------------------
 def ready(jsc, *args):
     print('READY!')
     jsc['#td_hostname'].html = socket.gethostname()
@@ -21,9 +30,8 @@ def reconnect(jsc, *args):
     jsc['#td_hostname'].html = socket.gethostname()
     jsc['#td_pid'].html = os.getpid()
 
-def button_start_clicked(jsc):
-#    jsc['#received_message'].html = 'YABBA' + time.time()
 
+def button_start_clicked(jsc):
     smq_server = jsc['#text_smqserver'].val
     client_name = jsc['#name'].val
     pub_list = jsc['#text_publist'].val
@@ -42,7 +50,6 @@ def button_test(jsc):
     t = time.time()
     for bjsc in jsc.get_broadcast_jscs():
         bjsc['#pre'].html = t
-    
 
 
 def button_check_new_messages_clicked(jsc):
@@ -57,13 +64,6 @@ def button_publish_clicked(jsc):
     jsc['#td_response'].html = str(response)
 
 
-# just to make life easier, let's start a SMQServer in a different thread
-SMQServer.start_in_thread(('localhost', 7000))
-#server.
-
-#def smqserver_thread
-
-
 def thread_worker():
     while True:
         time.sleep(5)
@@ -71,13 +71,19 @@ def thread_worker():
         try:
             for jsc in get_broadcast_jsclients('/a.html'):
                 jsc['#pre'].html = t
-        except:
+        except Exception as _:
             pass
 
-t = threading.Thread(target=thread_worker, daemon=True)
-t.start()
 
+# --------------------------------------------------
+#    Main
+# --------------------------------------------------
+if __name__ == "__main__":
+    # just to make life easier, let's start a SMQServer in a different thread
+    SMQServer.start_in_thread(('localhost', 7000))
 
+    t = threading.Thread(target=thread_worker, daemon=True)
+    t.start()
 
-logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
-run_pylinkjs_app(default_html='smq_test_client.html', port=7001)
+    logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
+    run_pylinkjs_app(default_html='smq_test_client.html', port=7001)

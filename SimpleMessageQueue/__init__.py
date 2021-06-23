@@ -81,7 +81,8 @@ class SMQServer():
 
     def register_client(self, client_info):
         try:
-            logging.info(f'Registering Client {client_info["smq_uid"]} {client_info["client_name"]} {client_info["client_hostname"]} {client_info["client_pid"]}')
+            logging.info(f'Registering Client {client_info["smq_uid"]} {client_info["client_name"]} ' +
+                         f'{client_info["client_hostname"]} {client_info["client_pid"]}')
 
             # sanity check
             cuid = client_info['smq_uid']
@@ -153,7 +154,8 @@ class SMQClient():
         # start XML RPC server on new thread
         self._local_rpc_server = SimpleXMLRPCServerEx(('', 0), allow_none=True, logRequests=False)
         self._local_rpc_server.register_function(self.receive_message)
-        self._local_rpc_server_thread = threading.Thread(target=lambda: self._local_rpc_server.serve_forever(), daemon=True)
+        self._local_rpc_server_thread = threading.Thread(target=lambda: self._local_rpc_server.serve_forever(),
+                                                         daemon=True)
         self._local_rpc_server_thread.start()
 
         # register this client with the main smq server
@@ -217,9 +219,10 @@ def _init_logging():
     console_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(threadName)s %(message)s'))
     root.addHandler(console_handler)
 
-    file_handler = logging.FileHandler(filename='simple_message_queue.log')
-    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(threadName)s %(message)s'))
-    root.addHandler(file_handler)
+    # rely on systemd to write log to file
+    # file_handler = logging.FileHandler(filename='simple_message_queue.log')
+    # file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(threadName)s %(message)s'))
+    # root.addHandler(file_handler)
 
 
 def run(args):
@@ -235,10 +238,16 @@ if __name__ == "__main__":
     try:
         # parse the arguments
         parser = argparse.ArgumentParser(description='SimpleMessageQeue')
-        parser.add_argument('--start_server', help='filename of config file to use, i.e. cfg_test.py', action='store_true')
+        parser.add_argument('--start_server', help='filename of config file to use, i.e. cfg_test.py',
+                            action='store_true')
         parser.add_argument('--server_hostname', required=True)
         parser.add_argument('--server_port', required=True, type=int)
+        parser.add_argument('--log_level', default=logging.INFO)
         args = parser.parse_args()
+
+        # switch logging level
+        root = logging.getLogger()
+        root.setLevel(args.log_level)
 
         # run
         run(vars(args))
