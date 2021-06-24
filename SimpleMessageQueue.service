@@ -8,5 +8,5 @@ WantedBy=multi-user.target
 Type=simple
 User=SimpleMessageQueue
 Restart=on-failure
-ExecStart=/usr/bin/python3 /usr/local/lib/python3.8/dist-packages/SimpleMessageQueue/__init__.py --start_server --server_hostname localhost --server_port 6500
+ExecStart=/usr/bin/python3 -m SimpleMessageQueue --start_server --server_hostname localhost --server_port 6500
 StandardError=append:/var/log/SimpleMessageQueue.log
