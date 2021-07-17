@@ -153,13 +153,6 @@ def run(args):
 
 
 if __name__ == "__main__":
-    # setup logging
-    logging.getLogger().setLevel(logging.INFO)
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(threadName)s %(message)s'))
-    logging.getLogger().addHandler(console_handler)
-
     try:
         # parse the arguments
         parser = argparse.ArgumentParser(description='Simple Message Queue Server')
@@ -169,9 +162,10 @@ if __name__ == "__main__":
         parser.add_argument('--logging_level', default='INFO', help='logging level')
         args = parser.parse_args()
 
-        # setup logging level
+        # setup logging
+        logging.basicConfig(level=logging.getLevelName(args.logging_level),
+                            format='%(asctime)s %(levelname)s %(threadName)s %(message)s')
         logging.info('Starting ', vars(args))
-        logging.getLogger().setLevel(getattr(logging, args.logging_level))
 
         # run
         run(vars(args))
