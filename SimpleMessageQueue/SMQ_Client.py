@@ -12,7 +12,7 @@ import uuid
 #    Class
 # --------------------------------------------------
 class SMQ_Client():
-    def __init__(self, smq_server_url, client_name, client_id, classifications, pub_list, sub_list, polling_interval=1):
+    def __init__(self, smq_server_url, client_name, client_id, classifications, pub_list, sub_list, polling_interval=0.1):
         """ init """
         self._classification = classifications
         self._client_id = client_id
@@ -45,7 +45,7 @@ class SMQ_Client():
                 handler = self._response_callbacks[msg['msg_uuid']]
                 del self._response_callbacks[msg['msg_uuid']]
                 if handler is not None:
-                    handler(msg)
+                    handler(msg, self)
             return
 
         # handle a normal message
@@ -60,7 +60,7 @@ class SMQ_Client():
         """ thread worker which will create new threads to handle each incoming message """
         # flag for reconnect needed
         need_reconnect = False
-        
+
         while not self._shutdown:
             try:
                 if need_reconnect:
@@ -175,7 +175,7 @@ class SMQ_Client():
         # blocking response handler if wait != 0
         response_msg, response_returned = None, False
 
-        def response_handler(msg):
+        def response_handler(msg, smqc):
             nonlocal response_msg, response_returned
             response_msg, response_returned = msg, True
 
