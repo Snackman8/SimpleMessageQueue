@@ -6,7 +6,7 @@ import logging
 import multiprocessing
 import queue
 import threading
-from xmlrpc.server import SimpleXMLRPCServer
+from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 
 # --------------------------------------------------
@@ -56,7 +56,7 @@ class SMQ_Server():
         """
         client_info = {}
         for k, v in self._registered_clients.items():
-            client_info[k] = {kk: v[kk] for kk in ('client_name', 'classifications', 'pub_list', 'sub_list')}
+            client_info[k] = {kk: v[kk] for kk in ('client_name', 'classifications', 'pub_list', 'sub_list', 'tag')}
         return client_info
 
     def pop_message(self, client_id):
@@ -77,7 +77,7 @@ class SMQ_Server():
         except Exception as e:
             logging.exception(e)
 
-    def register_client(self, client_name, client_id, classifications, pub_list, sub_list):
+    def register_client(self, client_name, client_id, classifications, pub_list, sub_list, tag):
         """
             register a client with the SMQ Server
 
@@ -88,12 +88,22 @@ class SMQ_Server():
                 pub_list - list of messages published by this client, i.e. ['ping', 'reload']
                 sub_list - list of messages subscribed by this client, i.e. ['ping_response', 'reload_response']
         """
-        logging.info(f'Registering Client {client_name} {client_id} {classifications} {pub_list} {sub_list}')
+        hostname = '?'
+        for i in range(0, 10):
+            try:
+                f = sys._getframe(i)
+                if isinstance(f.f_locals['self'], SimpleXMLRPCRequestHandler):
+                    hostname = f.f_locals['self'].client_address
+                    break
+            except Exception as _:
+                pass
+        logging.info(f'Registering Client {hostname} {client_name} {client_id} {classifications} {pub_list} ' +
+                     f'{sub_list} {tag}')
 
         client_incoming_queue = self._mp_manager.Queue()
         self._registered_clients[client_id] = {'client_name': client_name, 'classifications': classifications,
-                                               'pub_list': pub_list, 'sub_list': sub_list,
-                                               'incoming_queue': client_incoming_queue}
+                                               'pub_list': pub_list, 'sub_list': sub_list, 'hostname': hostname,
+                                               'incoming_queue': client_incoming_queue, 'tag': tag}
 
     def shutdown(self):
         """ called by rpc to shutdown this SMQ Server """

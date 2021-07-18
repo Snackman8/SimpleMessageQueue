@@ -12,7 +12,8 @@ import uuid
 #    Class
 # --------------------------------------------------
 class SMQ_Client():
-    def __init__(self, smq_server_url, client_name, client_id, classifications, pub_list, sub_list, polling_interval=0.1):
+    def __init__(self, smq_server_url, client_name, client_id, classifications, pub_list, sub_list, tag={},
+                 polling_interval=0.1):
         """ init """
         self._classification = classifications
         self._client_id = client_id
@@ -27,6 +28,7 @@ class SMQ_Client():
         self._smq_server_url = smq_server_url
         self._started = False
         self._sub_list = sub_list
+        self._tag = tag
 
     def __del__(self):
         """ unregister client when this instance is destroyed """
@@ -68,7 +70,7 @@ class SMQ_Client():
                                  f'{self._pub_list} {self._sub_list}')
                     with xmlrpc.client.ServerProxy(self._smq_server_url, allow_none=True) as sp:
                         sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list,
-                                           self._sub_list)
+                                           self._sub_list, self._tag)
                     need_reconnect = False
                     time.sleep(1)
 
@@ -205,7 +207,8 @@ class SMQ_Client():
         logging.info(f'Starting {self._client_name} {self._client_id} {self._classification} {self._pub_list} ' +
                      f'{self._sub_list}')
         with xmlrpc.client.ServerProxy(self._smq_server_url, allow_none=True) as sp:
-            sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list, self._sub_list)
+            sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list, self._sub_list,
+                               self._tag)
         threading.Thread(target=self._tw_pump_messages, daemon=True).start()
         self._started = True
 
