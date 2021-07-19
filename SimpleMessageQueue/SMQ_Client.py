@@ -5,6 +5,7 @@ import logging
 import threading
 import time
 import xmlrpc.client
+from xmlrpc.server import SimpleXMLRPCServer
 import uuid
 
 
@@ -15,6 +16,7 @@ class SMQ_Client():
     def __init__(self, smq_server_url, client_name, client_id, classifications, pub_list, sub_list, tag={},
                  polling_interval=0.1):
         """ init """
+        self._alive_rpc_server = None
         self._classification = classifications
         self._client_id = client_id
         self._client_name = client_name
@@ -35,6 +37,14 @@ class SMQ_Client():
     def __del__(self):
         """ unregister client when this instance is destroyed """
         self.stop()
+
+    def _tw_alive_rpc(self):
+        """ start a RPC server so the SMQ server can check if this client is still alive """
+        self._alive_rpc_server = SimpleXMLRPCServer(('', 0), allow_none=True, logRequests=False)
+        self._alive_rpc_server.register_function(lambda: True, name='is_alive')
+        while not self._shutdown:
+            self._alive_rpc_server.handle_request()
+        self._alive_rpc_server = None
 
     def _tw_process_message(self, msg):
         """ process an incoming message by delegating to the handler and returning a response
@@ -71,8 +81,8 @@ class SMQ_Client():
                     logging.info(f'Reconnecting {self._client_name} {self._client_id} {self._classification} ' +
                                  f'{self._pub_list} {self._sub_list}')
                     with xmlrpc.client.ServerProxy(self._smq_server_url, allow_none=True) as sp:
-                        sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list,
-                                           self._sub_list, self._tag)
+                        sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list_extended,
+                                           self._sub_list_extended, self._alive_rpc_server.server_address[1], self._tag)
                     need_reconnect = False
                     time.sleep(1)
 
@@ -155,6 +165,13 @@ class SMQ_Client():
             logging.info(f'    {k}: {v}')
         return client_info
 
+    def is_alive(self, client_id):
+        try:
+            with xmlrpc.client.ServerProxy(self._smq_server_url, allow_none=True) as sp:
+                return sp.is_alive(client_id)
+        except Exception as e:
+            logging.exception(e)
+
     def remove_message_handler(self, msg_type):
         """ remove the message handler for a message type
 
@@ -217,9 +234,11 @@ class SMQ_Client():
         """ start the SMQ Client """
         logging.info(f'Starting {self._client_name} {self._client_id} {self._classification} {self._pub_list} ' +
                      f'{self._sub_list}')
+        threading.Thread(target=self._tw_alive_rpc, daemon=True).start()
+        time.sleep(1)
         with xmlrpc.client.ServerProxy(self._smq_server_url, allow_none=True) as sp:
             sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list_extended,
-                               self._sub_list_extended, self._tag)
+                               self._sub_list_extended, self._alive_rpc_server.server_address[1], self._tag)
         threading.Thread(target=self._tw_pump_messages, daemon=True).start()
         self._started = True
 

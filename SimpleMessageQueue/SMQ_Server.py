@@ -5,15 +5,21 @@ import argparse
 import logging
 import multiprocessing
 import queue
-import sys
 import threading
 import time
-from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+import xmlrpc.client
+from xmlrpc.server import SimpleXMLRPCServer
 
 
 # --------------------------------------------------
 #    Class
 # --------------------------------------------------
+class XMLRPCServerWithClientIP(SimpleXMLRPCServer):
+    def process_request(self, request, client_address):
+        self.client_address = client_address
+        return SimpleXMLRPCServer.process_request(self, request, client_address)
+
+
 class SMQ_Server():
     def __init__(self, hostname, port):
         """ init """
@@ -65,6 +71,16 @@ class SMQ_Server():
             client_info[k] = {kk: v[kk] for kk in ('client_name', 'classifications', 'pub_list', 'sub_list', 'tag')}
         return client_info
 
+    def is_alive(self, client_id):
+        """ call the xmlrpc_alive server on the client to check if it is still alive """
+        try:
+            with xmlrpc.client.ServerProxy(self._registered_clients[client_id]['rpc_alive_addr'], allow_none=True) as sp:
+                sp.is_alive()
+            return True
+        except Exception as e:
+            logging.exception(e)
+            return False
+
     def pop_message(self, client_id):
         """ pop a message from the incoming_queue for the client_id
 
@@ -83,7 +99,7 @@ class SMQ_Server():
         except Exception as e:
             logging.exception(e)
 
-    def register_client(self, client_name, client_id, classifications, pub_list, sub_list, tag):
+    def register_client(self, client_name, client_id, classifications, pub_list, sub_list, rpc_alive_port, tag):
         """
             register a client with the SMQ Server
 
@@ -94,22 +110,16 @@ class SMQ_Server():
                 pub_list - list of messages published by this client, i.e. ['ping', 'reload']
                 sub_list - list of messages subscribed by this client, i.e. ['ping_response', 'reload_response']
         """
-        hostname = '?'
-        for i in range(0, 10):
-            try:
-                f = sys._getframe(i)
-                if isinstance(f.f_locals['self'], SimpleXMLRPCRequestHandler):
-                    hostname = f.f_locals['self'].client_address
-                    break
-            except Exception as _:
-                pass
-        logging.info(f'Registering Client {hostname} {client_name} {client_id} {classifications} {pub_list} ' +
-                     f'{sub_list} {tag}')
+        rpc_alive_addr = f'http://{self._rpc_server.client_address[0]}:{rpc_alive_port}'
+        logging.info(f'Registering Client {self._rpc_server.client_address} {client_name} {client_id} {classifications} '
+                     + f'{pub_list} {sub_list} {tag} {rpc_alive_addr}')
 
         client_incoming_queue = self._mp_manager.Queue()
         self._registered_clients[client_id] = {'client_name': client_name, 'classifications': classifications,
-                                               'pub_list': pub_list, 'sub_list': sub_list, 'hostname': hostname,
-                                               'incoming_queue': client_incoming_queue, 'tag': tag}
+                                               'pub_list': pub_list, 'sub_list': sub_list,
+                                               'hostname': self._rpc_server.client_address,
+                                               'incoming_queue': client_incoming_queue, 'tag': tag,
+                                               'rpc_alive_addr': rpc_alive_addr}
 
     def shutdown(self):
         """ called by rpc to shutdown this SMQ Server """
@@ -135,8 +145,9 @@ class SMQ_Server():
         self._dispatch_thread.start()
 
         logging.info(f'Starting SMQ Server RPC on port {self._port}')
-        self._rpc_server = SimpleXMLRPCServer(('', self._port), allow_none=True, logRequests=False)
+        self._rpc_server = XMLRPCServerWithClientIP(('', self._port), allow_none=True, logRequests=False)
         self._rpc_server.register_function(self.get_info_for_all_clients)
+        self._rpc_server.register_function(self.is_alive)
         self._rpc_server.register_function(self.pop_message)
         self._rpc_server.register_function(self.register_client)
         self._rpc_server.register_function(lambda msg: self._incoming_queue.put(msg, block=False), name='send_message')
