@@ -5,7 +5,9 @@ import argparse
 import logging
 import multiprocessing
 import queue
+import sys
 import threading
+import time
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 
@@ -36,12 +38,16 @@ class SMQ_Server():
                     targets = [msg['target_id']]
                 for t in targets:
                     if t in self._registered_clients:
-                        logging.info(f'Dispatching {msg["msg_uuid"]} {msg["msg_type"]} {msg["payload"]} ' +
-                                     f'from {msg["sender_id"]} to {t}')
-                        self._registered_clients[t]['incoming_queue'].put(msg, block=False)
-                        logging.info(f'Dispatched')
+                        if msg['msg_type'] in self._registered_clients[t]['sub_list']:
+                            logging.info(f'Dispatching {msg["msg_uuid"]} {msg["msg_type"]} {msg["payload"]} ' +
+                                         f'from {msg["sender_id"]} to {t}')
+                            self._registered_clients[t]['incoming_queue'].put(msg, block=False)
+                            logging.info(f'Dispatched')
             except queue.Empty:
                 pass
+            except BrokenPipeError as _:
+                logging.info('Broken Pipe, waiting 1 second')
+                time.sleep(1)
             except Exception as e:
                 logging.exception(e)
 

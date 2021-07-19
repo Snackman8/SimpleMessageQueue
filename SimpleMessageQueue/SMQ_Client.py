@@ -23,11 +23,13 @@ class SMQ_Client():
         self._outgoing_queue = None
         self._polling_interval = polling_interval
         self._pub_list = pub_list
+        self._pub_list_extended = pub_list + [f'{x}_response' for x in sub_list]
         self._response_callbacks = {}
         self._shutdown = False
         self._smq_server_url = smq_server_url
         self._started = False
         self._sub_list = sub_list
+        self._sub_list_extended = sub_list + [f'{x}_response' for x in pub_list]
         self._tag = tag
 
     def __del__(self):
@@ -97,6 +99,9 @@ class SMQ_Client():
                            it will be overwritten by the new handler.  There can only be one handler for a message type
                 handler - handler function for the msg_type.  Prototype for the handler is f(msg)
         """
+        if msg_type not in self._sub_list:
+            raise Exception(f'Message type "{msg_type}" is not on this SMQ Client\'s subscription list')
+
         self._message_handlers[msg_type] = handler
 
     def construct_msg(self, msg_type, target_id, payload, msg_uuid=None, sender_id=None):
@@ -159,6 +164,9 @@ class SMQ_Client():
             Returns:
                 the handler that was assigned to the message type before removal
         """
+        if msg_type not in self._sub_list:
+            raise Exception(f'Message type "{msg_type}" is not on this SMQ Client\'s subscription list')
+
         return self._message_handlers.pop(msg_type, None)
 
     def send_message(self, msg, response_callback=None, wait=0):
@@ -174,6 +182,9 @@ class SMQ_Client():
             Returns:
                 if wait is 0, then None.  Otherwise the response payload will be returned
         """
+        if msg['msg_type'] not in self._pub_list_extended:
+            raise Exception(f'Message type "{msg["msg_type"]}" is not on this SMQ Client\'s publication list {msg}')
+
         # blocking response handler if wait != 0
         response_msg, response_returned = None, False
 
@@ -207,8 +218,8 @@ class SMQ_Client():
         logging.info(f'Starting {self._client_name} {self._client_id} {self._classification} {self._pub_list} ' +
                      f'{self._sub_list}')
         with xmlrpc.client.ServerProxy(self._smq_server_url, allow_none=True) as sp:
-            sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list, self._sub_list,
-                               self._tag)
+            sp.register_client(self._client_name, self._client_id, self._classification, self._pub_list_extended,
+                               self._sub_list_extended, self._tag)
         threading.Thread(target=self._tw_pump_messages, daemon=True).start()
         self._started = True
 
