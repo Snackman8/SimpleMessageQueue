@@ -227,7 +227,7 @@ class SMQ_Client():
             while not response_returned:
                 if time.time() - start_time > wait:
                     raise TimeoutError()
-                time.sleep(0.01)
+                time.sleep(0.1)
             return response_msg['response_payload']
 
     def start(self):
