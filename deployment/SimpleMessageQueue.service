@@ -8,5 +8,5 @@ WantedBy=multi-user.target
 Type=simple
 User=SimpleMessageQueue
 Restart=on-failure
-ExecStart=/usr/bin/python3 -m SimpleMessageQueue.SMQ_Server --hostname localhost --port 6050 --start_server
+ExecStart=/usr/local/pipx/venvs/simplemessagequeue/bin/SMQ_Server --hostname localhost --port 6050 --start_server
 StandardError=append:/var/log/SimpleMessageQueue.log

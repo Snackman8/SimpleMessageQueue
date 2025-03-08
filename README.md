@@ -10,7 +10,7 @@ Multiple clients can connect to a server
 Update the packages in the package manager before installing
 ```
 sudo apt-get update
-sudo apt-get install python3-pip
+sudo apt-get install pipx
 ```
 
 Clone the project into your home directory
@@ -21,13 +21,8 @@ git clone https://github.com/Snackman8/SimpleMessageQueue
 
 Install the SimpleMessageQueue packge
 ```
-cd ~/SimpleMessageQueue
-sudo pip3 install .
-```
-
-Install the included systemd service to run the SimpleMessageQueue
-```
-sudo ./install_systemd_service.sh
+cd ~/SimpleMessageQueue/deployment
+sudo ./install_with_pipx_systemd.sh
 ```
 
 To check the status of the service, stop, or start use the commands below
