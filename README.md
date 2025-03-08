@@ -13,6 +13,11 @@ sudo apt-get update
 sudo apt-get install pipx
 ```
 
+Create the SimpleMessageQueue user
+```
+sudo useradd -m SimpleMessageQueue
+```
+
 Clone the project into your home directory
 ```
 cd ~
