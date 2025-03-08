@@ -42,7 +42,7 @@ if [[ "$1" == "--uninstall" ]]; then
     sudo systemctl disable $SERVICE_NAME
 
     echo "Removing systemd service file..."
-    sudo rm -f $SYSTEMD_PATH
+    sudo rm -f /etc/systemd/system/$SERVICE_NAME
     sudo systemctl daemon-reload
 
     echo "Uninstalling the app using pipx..."
@@ -51,6 +51,12 @@ if [[ "$1" == "--uninstall" ]]; then
     echo "Uninstallation complete."
     exit 0
 fi
+
+
+# ----------------------------------------
+#   Create User
+# ----------------------------------------
+sudo useradd -r -s /bin/false SimpleMessageQueue
 
 
 # ----------------------------------------
